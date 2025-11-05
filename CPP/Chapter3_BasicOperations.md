@@ -15,14 +15,14 @@
 | Operator | Name | Example | Result |
 |----------|------|---------|--------|
 | `&&` | Logical AND | `true && false` | false |
-| <code>&#124;&#124;</code> | Logical OR | `true &#124;&#124; false` | true |
+| <code>&#124;&#124;</code> | Logical OR | <code>true &#124;&#124; false</code> | true |
 | `!` | Logical NOT | `!true` | false |
 
 ### Bitwise Operators
 | Operator | Name | Example | Binary | Result |
 |----------|------|---------|--------|--------|
 | `&` | Bitwise AND | `5 & 3` | `0101 & 0011` | `0001` (1) |
-| <code>&#124;</code> | Bitwise OR | `5 &#124; 3` | `0101 &#124; 0011` | `0111` (7) |
+| <code>&#124;</code> | Bitwise OR | <code>5 &#124; 3</code> | <code>0101 &#124; 0011</code> | `0111` (7) |
 | `^` | Bitwise XOR | `5 ^ 3` | `0101 ^ 0011` | `0110` (6) |
 | `~` | Bitwise NOT | `~5` | `~0101` | `1010` (-6) |
 | `<<` | Left Shift | `5 << 1` | `0101 << 1` | `1010` (10) |
@@ -32,8 +32,8 @@
 
 ```mermaid
 graph TD
-    A["Operator Precedence"] --> B["Highest"]
-    A --> C["Lowest"]
+    A["Operator Precedence"] --> B["Highest Priority"]
+    A --> C["Lowest Priority"]
 
     B --> D["Scope Resolution ::"]
     B --> E["Function Call () Array Access []"]
@@ -44,12 +44,12 @@ graph TD
     H --> J["Additive + -"]
     H --> K["Shift << >>"]
     H --> L["Relational < <= > >="]
-    H --> M["Equality == !=]
-    H --> N["Bitwise & ^ |"]
-    H --> O["Logical &&"]
+    H --> M["Equality == != "]
+    H --> N["Bitwise AND OR XOR"]
+    H --> O["Logical AND"]
 
-    C --> P["Assignment = += -= *= /= %="]
-    C --> Q["Comma ,"]
+    C --> P["Assignment Operators"]
+    C --> Q["Comma"]
 
     style A fill:#e1f5fe
     style B fill:#c8e6c9
