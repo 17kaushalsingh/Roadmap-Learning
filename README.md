@@ -18,32 +18,47 @@ A comprehensive learning repository for placement preparation covering programmi
 ### 2. Data Structures & Algorithms Track 📊
 - **Location**: [DSA/](DSA/)
 - **Focus**: Complete DSA coverage from basics to advanced
-- **Chapters**: 22 chapters including:
-  - Mathematical foundations
-  - Data structures (arrays, trees, graphs, etc.)
-  - Algorithms (sorting, searching, graph algorithms)
-  - Advanced topics (DP, greedy, backtracking)
-  - Interview-specific patterns and company questions
+- **Chapters**: 18 core chapters including:
+  - Sorting, Arrays, Hashing, Binary Search
+  - Recursion, Linked Lists, Bit Manipulation
+  - Greedy Algorithms, Two Pointers, Stack/Queues
+  - Binary Trees, BSTs, Heaps, Graphs
+  - Dynamic Programming, Tries, String Algorithms, Mathematics
 - **Target**: Algorithmic problem solving and coding interviews
+
+### 3. Database Management Systems Track 🗄️
+- **Location**: [DBMS/](DBMS/)
+- **Focus**: Comprehensive database management and SQL skills
+- **Chapters**: 20 chapters including:
+  - Database fundamentals and relational model
+  - SQL basics to advanced queries
+  - Normalization and database design
+  - Transaction management and concurrency control
+  - Indexing, query processing, performance tuning
+  - NoSQL databases and distributed systems
+- **Target**: Database administration, backend development, and data engineering
 
 ---
 
 ## 🎯 Learning Path
 
-### Phase 1: Foundation (2-3 months)
+### Phase 1: Foundation (3-4 months)
 1. **C++ Fundamentals** - Complete Chapters 1-8
 2. **Basic DSA** - Complete Chapters 1-6
-3. **Practice** - 50+ easy problems
+3. **DBMS Basics** - Complete Chapters 1-5
+4. **Practice** - 50+ easy problems
 
-### Phase 2: Core Concepts (3-4 months)
+### Phase 2: Core Concepts (4-5 months)
 1. **Advanced C++** - Complete Chapters 9-15
 2. **Core DSA** - Complete Chapters 7-15
-3. **Practice** - 100+ medium problems
+3. **SQL Mastery** - Complete Chapters 6-10
+4. **Practice** - 100+ medium problems
 
-### Phase 3: Interview Preparation (1-2 months)
-1. **Advanced DSA** - Complete Chapters 16-22
-2. **Mock Interviews** - Regular practice sessions
-3. **Company-Specific Prep** - Target company patterns
+### Phase 3: Interview Preparation (2-3 months)
+1. **Advanced DSA** - Complete Chapters 16-18
+2. **Advanced DBMS** - Complete Chapters 11-20
+3. **Mock Interviews** - Regular practice sessions
+4. **Company-Specific Prep** - Target company patterns
 
 ---
 
@@ -70,19 +85,24 @@ A comprehensive learning repository for placement preparation covering programmi
 ## 📖 Additional Resources
 
 ### Online Platforms
-- **LeetCode** - Coding interview practice
-- **HackerRank** - Structured learning paths
+- **LeetCode** - Coding interview practice (with Database section)
+- **HackerRank** - Structured learning paths (SQL challenges)
 - **Codeforces** - Competitive programming
 - **GeeksforGeeks** - Comprehensive tutorials
+- **SQLZoo** - Interactive SQL tutorials
+- **InterviewBit** - Database interview questions
 
 ### Books
 - **C++**: The C++ Programming Language by Bjarne Stroustrup
 - **DSA**: Introduction to Algorithms by CLRS
+- **DBMS**: Database System Concepts by Korth & Silberschatz
+- **SQL**: Learning SQL by Alan Beaulieu
 - **Interview**: Cracking the Coding Interview by Gayle McDowell
 
 ### YouTube Channels
 - **C++**: The Cherno, CppNuts
 - **DSA**: Abdul Bari, Gaurav Sen
+- **DBMS**: FreeCodeCamp, Programming with Mosh
 - **Interview**: TechLead, Errichto
 
 ---
