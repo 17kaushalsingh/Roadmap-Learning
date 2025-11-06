@@ -138,6 +138,118 @@ flowchart LR
 - In event of crash or T failure, system uses old value field of log records to restore modified values
 - Update takes place only after log records are in stable storage
 
+### 3. Checkpoint-Based Recovery 🎯
+
+### What are Checkpoints?
+**Checkpoints are points in the execution sequence where the database state is made consistent and all log records up to that point are no longer needed for recovery.**
+
+### Why Checkpoints are Needed? 🤔
+- **Log files can grow very large** over time
+- **Recovery from very beginning** is time-consuming
+- **Regular checkpoints limit recovery time**
+- **Improve overall system performance**
+
+### Checkpoint Process 📋
+
+#### **Checkpoint Creation**:
+```mermaid
+flowchart TD
+    A[Start Checkpoint] --> B[Suspend New Transactions]
+    B --> C[Wait for Active Transactions to Complete]
+    C --> D[Flush All Log Records to Stable Storage]
+    D --> E[Flush All Database Buffer Pages to Disk]
+    E --> F[Write Checkpoint Record to Log]
+    F --> G[Resume New Transactions]
+    G --> H[Checkpoint Complete]
+```
+
+#### **Checkpoint Record Contains**:
+- **List of Active Transactions** (transactions that started but not committed at checkpoint time)
+- **Position of Log** where checkpoint record is written
+- **Timestamp** of checkpoint creation
+
+### Recovery with Checkpoints 🔄
+
+#### **Recovery Process Flow**:
+```mermaid
+flowchart TD
+    A[System Restart] --> B[Find Latest Checkpoint]
+    B --> C[Read Checkpoint Record]
+    C --> D[Get List of Active Transactions]
+    D --> E[Redo All Committed Transactions After Checkpoint]
+    E --> F[Undo All Active Transactions]
+    F --> G[Database Consistent State]
+```
+
+#### **Recovery Steps**:
+
+1. **Find Most Recent Checkpoint**
+   - Read log backward to find latest checkpoint record
+   - Get list of active transactions at checkpoint time
+
+2. **Redo Phase** (Forward Scan)
+   - Start from checkpoint position
+   - Redo all transactions that have COMMIT records
+   - Apply all changes from committed transactions
+
+3. **Undo Phase** (Backward Scan)
+   - Go through log backward
+   - Undo all active transactions (those without COMMIT records)
+   - Restore database to consistent state
+
+### Example: Checkpoint Recovery 📊
+
+#### **Scenario**:
+```
+Log Sequence (Time →):
+T1 START
+T2 START
+T3 START
+[CHECKPOINT] - Active: T1, T2, T3
+T1 COMMIT
+T4 START
+T2 COMMIT
+[SYSTEM CRASH]
+```
+
+#### **Recovery Process**:
+1. **Find Checkpoint**: Active transactions were T1, T2, T3
+2. **Redo Phase**:
+   - T1 has COMMIT → Redo T1 changes
+   - T2 has COMMIT → Redo T2 changes
+   - T3 has NO COMMIT → Ignore T3
+   - T4 has NO COMMIT → Ignore T4
+3. **Undo Phase**:
+   - T3 was active at checkpoint but no COMMIT → Undo T3
+   - T4 started after checkpoint but no COMMIT → Undo T4
+
+#### **Result**:
+- **T1, T2**: Changes applied (committed)
+- **T3, T4**: Changes undone (not committed)
+
+### Checkpoint Benefits ⚡
+
+#### **Advantages**:
+- **Faster Recovery**: Only need to process log since last checkpoint
+- **Smaller Log Size**: Can delete log records before checkpoint
+- **Regular Maintenance**: Can schedule checkpoints during low activity
+- **Predictable Recovery Time**: Recovery time bounded by checkpoint frequency
+
+#### **Trade-offs**:
+- **System Pause**: Brief pause during checkpoint creation
+- **Resource Usage**: Requires disk I/O for flushing buffers
+- **Frequency Balance**: Too frequent → performance impact; too rare → long recovery
+
+### Checkpoint vs No Checkpoint 📈
+
+| Aspect | Without Checkpoints | With Checkpoints |
+|--------|---------------------|------------------|
+| **Recovery Time** | O(Entire Log) | O(Since Last Checkpoint) |
+| **Log Size** | Continuously Growing | Bounded |
+| **System Overhead** | Low | Periodic During Checkpoints |
+| **Recovery Complexity** | Simple | More Complex |
+| **Performance** | Consistent | Variable During Checkpoints |
+
 ### Failure Handling 🚨
 
 #### **Deferred Modifications - Failure Scenarios**:
@@ -166,6 +278,22 @@ flowchart TD
     E --> F[Database restored to post-transaction state]
 ```
 
+#### **Checkpoint Recovery - Failure Scenarios**:
+
+##### **System Crash After Checkpoint**:
+```mermaid
+flowchart TD
+    A[System Crash] --> B[Locate Latest Checkpoint]
+    B --> C[Redo Committed Since Checkpoint]
+    C --> D[Undo Active Since Checkpoint]
+    D --> E[Database Consistent]
+```
+
+##### **System Crash During Checkpoint**:
+- **Checkpoint incomplete** → Use previous checkpoint
+- **Log consistent** → Recovery from previous checkpoint
+- **No data loss** → Previous checkpoint ensures safety
+
 ---
 
 ## Comparison of Methods ⚖️
@@ -190,6 +318,16 @@ flowchart TD
 | **Recovery** | Redo only | Redo + Undo |
 | **Performance** | Better during transaction | Better after commit |
 | **Complexity** | Simpler | More complex |
+
+### Checkpoint vs No Checkpoint
+
+| Aspect | Without Checkpoints | With Checkpoints |
+|--------|---------------------|------------------|
+| **Recovery Time** | O(Entire Log) | O(Since Last Checkpoint) |
+| **Log Size** | Continuously Growing | Bounded |
+| **System Overhead** | Low | Periodic During Checkpoints |
+| **Recovery Complexity** | Simple | More Complex |
+| **Performance** | Consistent | Variable During Checkpoints |
 
 ---
 
@@ -276,6 +414,30 @@ Failure Scenarios:
 - If update fails, old database remains active
 - System provides atomic block/sector updates for this purpose
 
+### Q6: Explain checkpoint-based recovery with an example
+**Answer**:
+- Checkpoints mark consistent database states
+- Log contains active transactions at checkpoint time
+- **Example**: If checkpoint with active transactions T1,T2, and later T1 commits but T3 starts and doesn't commit
+- **Recovery**: Redo T1 (committed), Undo T2,T3 (not committed)
+- **Benefit**: Only process log since checkpoint, not entire log
+
+### Q7: When are checkpoints typically taken in database systems?
+**Answer**:
+- During low system activity periods
+- When log reaches certain size threshold
+- At regular time intervals (e.g., every hour)
+- Before system maintenance or shutdown
+- Based on transaction count thresholds
+- Balance between performance impact and recovery speed
+
+### Q8: What happens if system crashes during checkpoint creation?
+**Answer**:
+- Use previous checkpoint for recovery
+- No data loss as previous checkpoint ensured consistency
+- Checkpoint record not written → previous checkpoint remains valid
+- Recovery proceeds from last successful checkpoint
+
 ---
 
 ## Quick Reference Table 📋
@@ -285,12 +447,13 @@ Failure Scenarios:
 | **Shadow-Copy** | Delete new copy if fail | db-pointer update | Small databases |
 | **Deferred Log** | Ignore log if fail | Redo from log after commit | Batch processing |
 | **Immediate Log** | Undo from old values | Redo from new values | OLTP systems |
+| **Checkpoint** | Undo active transactions | Redo committed since checkpoint | Large production systems |
 
-| Failure Type | Deferred Recovery | Immediate Recovery |
-|---------------|-------------------|-------------------|
-| **Before Commit** | Ignore log records | Undo using old values |
-| **After Commit** | Redo using log records | Redo using new values |
-| **During Update** | Redo interrupted operation | Undo interrupted operation |
+| Failure Type | Deferred Recovery | Immediate Recovery | Checkpoint Recovery |
+|---------------|-------------------|-------------------|-------------------|
+| **Before Commit** | Ignore log records | Undo using old values | Undo active transactions |
+| **After Commit** | Redo using log records | Redo using new values | Redo since checkpoint |
+| **During Update** | Redo interrupted | Undo interrupted | Use previous checkpoint |
 
 ---
 
@@ -300,9 +463,11 @@ Failure Scenarios:
 2. **Log-Based Recovery**: Efficient, uses incremental logging, supports multiple transactions
 3. **Deferred Modifications**: Safer, only redo operations needed
 4. **Immediate Modifications**: More complex, both undo and redo needed
-5. **Stable Storage**: Critical for ensuring log records survive failures
-6. **Atomic db-pointer**: Key to shadow-copy durability
-7. **Write-Ahead Logging**: Log must be written before database changes
-8. **Recovery Strategy**: Different approaches based on when failure occurs
+5. **Checkpoints**: Limit recovery time and log size, essential for large systems
+6. **Stable Storage**: Critical for ensuring log records survive failures
+7. **Atomic db-pointer**: Key to shadow-copy durability
+8. **Write-Ahead Logging**: Log must be written before database changes
+9. **Checkpoint Frequency**: Balance between performance impact and recovery speed
+10. **Recovery Strategy**: Different approaches based on when failure occurs
 
 **Remember**: Recovery mechanisms are essential for database reliability - they ensure your data remains consistent and available even when systems fail! 🔧
