@@ -122,12 +122,6 @@ flowchart TD
 
     G --> J[Transaction Complete]
     I --> J
-
-    style A fill:#e1f5fe
-    style G fill:#c8e6c9
-    style E fill:#ffcdd2
-    style I fill:#fff3e0
-    style J fill:#f3e5f5
 ```
 
 ### State Descriptions:
