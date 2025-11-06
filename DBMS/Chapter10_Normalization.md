@@ -178,22 +178,39 @@ Think of normal forms like **levels of cleanliness** - each level removes more m
 When data depends on only **part** of a composite key.
 
 **Problem Example**:
-```
-Table: Enrollments
-Key: {Student_ID, Course_ID}
-Data: Student_Name, Grade, Course_Name
 
-❌ Student_Name depends only on Student_ID (partial!)
-❌ Course_Name depends only on Course_ID (partial!)
-✅ Grade depends on BOTH Student_ID AND Course_ID (full!)
-```
+**Before 2NF (Bad Table)**:
+| Student_ID | Course_ID | Student_Name | Grade | Course_Name |
+|------------|-----------|--------------|-------|-------------|
+| 101        | CS101     | John         | A     | Databases   |
+| 101        | MA201     | John         | B     | Calculus    |
+| 102        | CS101     | Jane         | A     | Databases   |
 
-**Solution**: Split into separate tables
-```
-Students:   {Student_ID} → Student_Name
-Courses:    {Course_ID} → Course_Name
-Enrollments:{Student_ID, Course_ID} → Grade
-```
+**Issues**:
+- ❌ Student_Name depends only on Student_ID (partial!)
+- ❌ Course_Name depends only on Course_ID (partial!)
+- ✅ Grade depends on BOTH Student_ID AND Course_ID (full!)
+
+**After 2NF (Good Tables)**:
+
+**Table 1: Students**
+| Student_ID | Student_Name |
+|------------|--------------|
+| 101        | John         |
+| 102        | Jane         |
+
+**Table 2: Courses**
+| Course_ID | Course_Name |
+|-----------|-------------|
+| CS101     | Databases   |
+| MA201     | Calculus    |
+
+**Table 3: Enrollments**
+| Student_ID | Course_ID | Grade |
+|------------|-----------|-------|
+| 101        | CS101     | A     |
+| 101        | MA201     | B     |
+| 102        | CS101     | A     |
 
 **Key Idea**: Non-key data must depend on the **entire** key, not just part of it.
 
