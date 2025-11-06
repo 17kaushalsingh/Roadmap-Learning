@@ -107,21 +107,14 @@ stateDiagram-v2
 **Detailed State Transitions**:
 
 ```mermaid
-flowchart TD
-    A[Start Transaction] --> B[Active State]
-    B --> C{Execution Result}
-    C -->|Success| D[Partially Committed]
-    C -->|Error| E[Failed State]
-
-    D --> F{Commit Operation}
-    F -->|Success| G[Committed State]
-    F -->|Failure| E
-
-    E --> H[Rollback Changes]
-    H --> I[Aborted State]
-
-    G --> J[Transaction Complete]
-    I --> J
+flowchart LR
+    A[Active state] -->|R/W operations| B[Partially committed state]
+    B -->|Permanent store| C[Committed state]
+    C --> D[Terminated state]
+    A -->|Failure| E[Failed state]
+    B -->|Failure| E
+    E -->|Roll back| F[Aborted state]
+    F --> D
 ```
 
 ### State Descriptions:
