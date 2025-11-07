@@ -1,10 +1,89 @@
-# Chapter 7: API Security
+# Chapter 07: API Security
 
-## Best Practices
+## Introduction
 
-### Defense in Depth Strategy
+**📌 API Security**: The practice of protecting APIs from attacks and unauthorized access. Think of it like a security system for a digital vault - multiple layers of protection to keep your data safe.
 
-**Defense in Depth** = Multiple layers of security controls to protect APIs
+**📌 Why Security Matters**: A single security breach can cost millions in damages, destroy customer trust, and bring down your entire business. API security is not optional - it's essential.
+
+This chapter covers the most critical security threats and practical implementation strategies to protect your APIs.
+
+---
+
+## OWASP Top 10 API Security Risks
+
+### What is OWASP?
+
+**OWASP (Open Web Application Security Project)**: A nonprofit foundation that works to improve software security through community-led open-source software projects.
+
+**📌 OWASP Top 10**: A regularly updated report outlining the most critical security risks to web applications.
+
+### Current OWASP API Security Top 10 (2023)
+
+| Rank | Risk | Description | Impact |
+|------|------|-------------|--------|
+| **1** | Broken Object Level Authorization | API endpoints fail to verify user has access to specific object | Data exposure |
+| **2** | Broken User Authentication | Authentication mechanisms are weak or misconfigured | Account takeover |
+| **3** | Broken Object Property Level Authorization | Similar to #1 but for specific object properties | Data exposure |
+| **4** | Unrestricted Resource Consumption | No limits on API calls leading to exhaustion | Denial of Service |
+| **5** | Broken Function Level Authorization | API functions lack proper permission checks | Data exposure |
+| **6** | Unrestricted Access to Sensitive Business Flows | Sensitive operations lack proper restrictions | Business logic abuse |
+| **7** | Server Side Request Forgery (SSRF)** | Server can be tricked into making requests to other systems | Data exfiltration |
+| **8** | Security Misconfiguration | Security settings are missing or misconfigured | System compromise |
+| **9** | Improper Inventory Management | APIs are not properly cataloged and managed | Unknown attack surface |
+| **10** | Unsafe Consumption of APIs | Dependencies on insecure third-party APIs | Supply chain attacks |
+
+### Understanding Each Risk
+
+#### 1. Broken Object Level Authorization
+
+**Problem**: `/users/123/profile` doesn't check if user has permission to access user 123's profile.
+
+```javascript
+// Vulnerable code
+app.get('/users/:id/profile', (req, res) => {
+  const user = await User.findById(req.params.id);
+  // No authorization check - anyone can access any user's profile!
+  res.json(user);
+});
+
+// Secure code
+app.get('/users/:id/profile', authMiddleware, async (req, res) => {
+  const requestedUserId = req.params.id;
+  const authenticatedUserId = req.user.id;
+
+  if (requestedUserId !== authenticatedUserId) {
+    return res.status(403).json({ error: 'Access denied' });
+  }
+
+  const user = await User.findById(requestedUserId);
+  res.json(user);
+});
+```
+
+#### 2. Broken User Authentication
+
+**Problem**: Weak authentication that can be easily bypassed.
+
+```javascript
+// Vulnerable: Predictable JWT secret
+const JWT_SECRET = 'secret123'; // Should be complex and random
+
+// Secure: Strong, randomly generated secret
+const JWT_SECRET = process.env.JWT_SECRET; // Should be 256+ characters
+```
+
+---
+
+## Defense in Depth Strategy
+
+### What is Defense in Depth?
+
+**Defense in Depth**: Multiple layers of security controls so that if one fails, others still protect the system.
+
+**📌 Think of it like**: A medieval castle with moat, walls, guards, towers, and a treasure room with multiple locks - an attacker must breach multiple defenses.
+
+### Security Layers Architecture
 
 ```mermaid
 flowchart TD
@@ -14,702 +93,278 @@ flowchart TD
     D --> E[Rate Limiting]
     E --> F[Logging & Monitoring]
     F --> G[Data Encryption]
+
+    A --> A1[HTTPS/WAF]
+    A --> A2[DDoS Protection]
+    B --> B1[JWT/OAuth/mTLS]
+    B --> B2[Session Management]
+    C --> C1[RBAC/ABAC]
+    C --> C2[Permissions]
+    D --> D1[Schema Validation]
+    D --> D2[SQL Injection Prevention]
+    E --> E1[Rate Limiting]
+    E --> E2[Quota Management]
+    F --> F1[Audit Logging]
+    F --> F2[Anomaly Detection]
+    G --> G1[Database Encryption]
+    G --> G2[Field-Level Encryption]
 ```
 
-### Security Layers
+### Security Checklist
 
-| Layer | Purpose | Implementation |
-|-------|---------|----------------|
-| **Network** | Protect data in transit | HTTPS, WAF, DDoS protection |
-| **Authentication** | Verify identity | JWT, OAuth, mTLS |
-| **Authorization** | Control access | RBAC, ABAC, permissions |
-| **Input Validation** | Prevent injection attacks | Schema validation, sanitization |
-| **Rate Limiting** | Prevent abuse | Token bucket, sliding window |
-| **Encryption** | Protect data at rest | Database encryption, field-level |
-| **Logging** | Detect breaches | Audit trails, monitoring |
+| Layer | Essential Controls | Implementation |
+|-------|-------------------|----------------|
+| **Network** | HTTPS, WAF, DDoS protection | Nginx, Cloudflare |
+| **Authentication** | Strong passwords, MFA, JWT | bcrypt, Auth0, Okta |
+| **Authorization** | Role-based access, permissions | Custom middleware |
+| **Input Validation** | Schema validation, sanitization | Joi, express-validator |
+| **Rate Limiting** | Token bucket, sliding window | rate-limiter-flexible |
+| **Encryption** | TLS 1.3, database encryption | crypto module |
+| **Logging** | Audit trails, monitoring | Winston, ELK stack |
 
-### HTTPS Implementation
+---
 
-#### **SSL/TLS Configuration**
+## Common Security Vulnerabilities
+
+### 1. SQL Injection
+
+**What it is**: Attack that inserts malicious SQL code into database queries.
+
+**📌 Think of it like**: Someone adding extra instructions to a questionnaire that changes how the system processes the data.
+
+#### Prevention
 
 ```javascript
-// Express.js with HTTPS
-const https = require('https');
-const fs = require('fs');
+// Vulnerable: Direct string concatenation
+const query = `SELECT * FROM users WHERE id = ${userId}`;
 
-const options = {
-  key: fs.readFileSync('path/to/private.key'),
-  cert: fs.readFileSync('path/to/certificate.crt'),
-  ca: fs.readFileSync('path/to/ca_bundle.crt'),
-  minVersion: 'TLSv1.2',
-  ciphers: [
-    'ECDHE-ECDSA-AES128-GCM-SHA256',
-    'ECDHE-RSA-AES128-GCM-SHA256',
-    'ECDHE-ECDSA-AES256-GCM-SHA384',
-    'ECDHE-RSA-AES256-GCM-SHA384',
-    'ECDHE-ECDSA-CHACHA20-POLY1305',
-    'ECDHE-RSA-CHACHA20-POLY1305'
-  ].join(':'),
-  honorCipherOrder: true
-};
+// Secure: Parameterized queries
+const query = 'SELECT * FROM users WHERE id = ?';
+const result = await db.query(query, [userId]);
 
-const app = express();
+// Using ORM with built-in protection
+const user = await User.findById(userId);
+```
 
-// Security headers middleware
-app.use((req, res, next) => {
-  res.setHeader('Strict-Transport-Security', 'max-age=31536000; includeSubDomains');
-  res.setHeader('X-Content-Type-Options', 'nosniff');
-  res.setHeader('X-Frame-Options', 'DENY');
-  res.setHeader('X-XSS-Protection', '1; mode=block');
-  res.setHeader('Referrer-Policy', 'strict-origin-when-cross-origin');
-  res.setHeader('Content-Security-Policy', "default-src 'self'");
-  next();
+### 2. Cross-Site Scripting (XSS)
+
+**What it is**: Attack that injects malicious scripts into web pages viewed by other users.
+
+**📌 Think of it like**: Someone slipping a note into a suggestion box that tells the system to display malicious code to other users.
+
+#### Prevention
+
+```javascript
+// Vulnerable: Rendering user input directly
+res.send(`<div>${userComment}</div>`);
+
+// Secure: Sanitize input
+const sanitizedComment = sanitizeHtml(userComment);
+res.send(`<div>${sanitizedComment}</div>`);
+```
+
+### 3. Cross-Site Request Forgery (CSRF)
+
+**What it is**: Attack that tricks authenticated users into performing actions they didn't intend to.
+
+**📌 Think of it like**: Someone sending a fake email that looks like it's from your bank, asking you to click a link that transfers money.
+
+#### Prevention
+
+```javascript
+// CSRF Token Implementation
+app.use(csrf({ cookie: true }));
+
+app.post('/api/transfer', (req, res) => {
+  // CSRF token is automatically validated by middleware
+  // Transfer logic here
 });
-
-https.createServer(options, app).listen(443);
 ```
 
-#### **HSTS (HTTP Strict Transport Security)**
+### 4. Insecure Deserialization
 
-```http
-# HSTS Header
-Strict-Transport-Security: max-age=31536000; includeSubDomains; preload
+**What it is**: Attack that manipulates serialized data to execute malicious code.
 
-# CSP Header
-Content-Security-Policy: default-src 'self'; script-src 'self' 'unsafe-inline'; style-src 'self' 'unsafe-inline'
-```
+**📌 Think of it like**: Someone tampering with a shipping label to change the contents inside the package.
 
-### Authentication Security
-
-#### **Password Security**
+#### Prevention
 
 ```javascript
-const bcrypt = require('bcrypt');
+// Use signed and encrypted tokens
+const sessionToken = jwt.sign(
+  { userId, role: 'user' },
+  process.env.JWT_SECRET,
+  { expiresIn: '1h' }
+);
 
-// Password hashing
-async function hashPassword(password) {
-  const saltRounds = 12; // Minimum 12 rounds
-  return await bcrypt.hash(password, saltRounds);
-}
-
-// Password validation
-async function validatePassword(password, hashedPassword) {
-  return await bcrypt.compare(password, hashedPassword);
-}
-
-// Password policy validation
-function validatePasswordPolicy(password) {
-  const minLength = 12;
-  const hasUpperCase = /[A-Z]/.test(password);
-  const hasLowerCase = /[a-z]/.test(password);
-  const hasNumbers = /\d/.test(password);
-  const hasSpecialChar = /[!@#$%^&*(),.?":{}|<>]/.test(password);
-
-  return {
-    valid: password.length >= minLength && hasUpperCase && hasLowerCase && hasNumbers && hasSpecialChar,
-    errors: [
-      password.length < minLength ? 'Password must be at least 12 characters' : null,
-      !hasUpperCase ? 'Password must contain uppercase letters' : null,
-      !hasLowerCase ? 'Password must contain lowercase letters' : null,
-      !hasNumbers ? 'Password must contain numbers' : null,
-      !hasSpecialChar ? 'Password must contain special characters' : null
-    ].filter(Boolean)
-  };
-}
+// Verify token integrity
+const decoded = jwt.verify(token, process.env.JWT_SECRET);
 ```
 
-#### **Multi-Factor Authentication (MFA)**
+---
+
+## Input Validation and Sanitization
+
+### What is Input Validation?
+
+**Input Validation**: The process of ensuring that user input meets specific criteria before processing it.
+
+**📌 Think of it like**: A bouncer at a club checking IDs - if an ID is fake or doesn't meet requirements, entry is denied.
+
+### Validation Best Practices
+
+| Type | When to Use | Example |
+|------|------------|--------|
+| **Type Validation** | Basic data types | Age must be number |
+| **Range Validation** | Min/max values | Age between 18-100 |
+| **Format Validation** | Patterns like email, phone | Email format validation |
+| **Whitelist Validation** | Allow only specific values | Status: active/inactive |
+| **Length Validation** | String length constraints | Password 8-50 chars |
+
+### Implementation Examples
 
 ```javascript
-const speakeasy = require('speakeasy');
-const qrcode = require('qrcode');
-
-// Generate TOTP secret
-function generateTOTPSecret(userEmail) {
-  return speakeasy.generateSecret({
-    name: `MyApp (${userEmail})`,
-    issuer: 'MyApp',
-    length: 32
-  });
-}
-
-// Generate QR code for authenticator app
-async function generateQRCode(secret) {
-  const otpauthUrl = speakeasy.otpauthURL({
-    secret: secret.base32,
-    label: secret.name,
-    issuer: secret.issuer
-  });
-
-  return await qrcode.toDataURL(otpauthUrl);
-}
-
-// Verify TOTP token
-function verifyTOTPToken(token, secret) {
-  return speakeasy.totp.verify({
-    secret: secret,
-    encoding: 'base32',
-    token: token,
-    window: 2 // Allow 2 steps before/after for clock skew
-  });
-}
-```
-
-### API Key Security
-
-#### **Secure API Key Generation**
-
-```javascript
-const crypto = require('crypto');
-
-function generateSecureAPIKey() {
-  // Generate cryptographically secure random key
-  return crypto.randomBytes(32).toString('hex');
-}
-
-function hashAPIKey(apiKey) {
-  return crypto.createHash('sha256').update(apiKey).digest('hex');
-}
-
-// API key storage with rate limiting
-class APIKeyStore {
-  constructor() {
-    this.keys = new Map();
-    this.rateLimits = new Map();
-  }
-
-  createKey(userId, permissions) {
-    const apiKey = generateSecureAPIKey();
-    const keyHash = hashAPIKey(apiKey);
-
-    this.keys.set(keyHash, {
-      userId,
-      permissions,
-      createdAt: new Date(),
-      lastUsed: null,
-      usageCount: 0
-    });
-
-    return { apiKey, keyHash };
-  }
-
-  validateKey(apiKey, endpoint) {
-    const keyHash = hashAPIKey(apiKey);
-    const keyData = this.keys.get(keyHash);
-
-    if (!keyData) {
-      return { valid: false, reason: 'Invalid API key' };
-    }
-
-    // Check permissions
-    if (!this.checkPermissions(keyData.permissions, endpoint)) {
-      return { valid: false, reason: 'Insufficient permissions' };
-    }
-
-    // Update usage
-    keyData.lastUsed = new Date();
-    keyData.usageCount++;
-
-    return { valid: true, userId: keyData.userId };
-  }
-
-  checkPermissions(permissions, endpoint) {
-    return permissions.includes('*') ||
-           permissions.some(perm => endpoint.startsWith(perm));
-  }
-}
-```
-
-### Input Validation and Sanitization
-
-#### **Request Validation**
-
-```javascript
+// Using Joi for validation
 const Joi = require('joi');
-const DOMPurify = require('isomorphic-dompurify');
 
-// Validation schemas
 const userSchema = Joi.object({
-  username: Joi.string()
-    .alphanum()
-    .min(3)
-    .max(30)
-    .required(),
-  email: Joi.string()
-    .email({ tlds: { allow: false } })
-    .required(),
-  firstName: Joi.string()
-    .pattern(/^[a-zA-Z\s'-]+$/)
-    .max(50)
-    .optional(),
-  lastName: Joi.string()
-    .pattern(/^[a-zA-Z\s'-]+$/)
-    .max(50)
-    .optional(),
-  bio: Joi.string()
-    .max(500)
-    .optional()
-    .custom((value, helpers) => {
-      // Sanitize HTML content
-      return DOMPurify.sanitize(value);
-    })
+  name: Joi.string().min(2).max(50).required(),
+  email: Joi.string().email().required(),
+  age: Joi.number().integer().min(18).max(120).required(),
+  role: Joi.string().valid('user', 'admin').default('user')
 });
 
 // Validation middleware
 function validateRequest(schema) {
   return (req, res, next) => {
-    const { error, value } = schema.validate(req.body, {
-      abortEarly: false,
-      stripUnknown: true
-    });
-
+    const { error } = schema.validate(req.body);
     if (error) {
-      const errors = error.details.map(detail => ({
-        field: detail.path.join('.'),
-        message: detail.message,
-        value: detail.context.value
-      }));
-
       return res.status(400).json({
         error: 'Validation failed',
-        errors
+        details: error.details.map(d => d.message)
       });
     }
-
-    req.body = value;
     next();
   };
 }
 
-// SQL Injection prevention
-const { Pool } = require('pg');
-
-class UserRepository {
-  constructor(pool) {
-    this.pool = pool;
+// Usage
+app.post('/api/users',
+  validateRequest(userSchema),
+  async (req, res) => {
+    // Process validated data
+    const user = await User.create(req.body);
+    res.status(201).json(user);
   }
-
-  async findUserByEmail(email) {
-    // Use parameterized queries to prevent SQL injection
-    const query = 'SELECT * FROM users WHERE email = $1';
-    const result = await this.pool.query(query, [email]);
-    return result.rows[0];
-  }
-
-  async createUser(userData) {
-    const { username, email, passwordHash } = userData;
-    const query = `
-      INSERT INTO users (username, email, password_hash, created_at)
-      VALUES ($1, $2, $3, NOW())
-      RETURNING id, username, email, created_at
-    `;
-    const result = await this.pool.query(query, [username, email, passwordHash]);
-    return result.rows[0];
-  }
-}
+);
 ```
 
-#### **File Upload Security**
+### Input Sanitization
 
 ```javascript
-const multer = require('multer');
-const path = require('path');
+// Remove potentially dangerous characters
+function sanitizeInput(input) {
+  if (typeof input !== 'string') return input;
 
-// Secure file upload configuration
-const upload = multer({
-  storage: multer.diskStorage({
-    destination: (req, file, cb) => {
-      cb(null, './secure-uploads/');
-    },
-    filename: (req, file, cb) => {
-      // Generate unique filename
-      const uniqueSuffix = Date.now() + '-' + Math.round(Math.random() * 1E9);
-      const ext = path.extname(file.originalname).toLowerCase();
-      cb(null, `upload-${uniqueSuffix}${ext}`);
-    }
-  }),
-  fileFilter: (req, file, cb) => {
-    // Allowed file types
-    const allowedTypes = ['.jpg', '.jpeg', '.png', '.gif', '.pdf', '.doc', '.docx'];
-    const ext = path.extname(file.originalname).toLowerCase();
-
-    if (allowedTypes.includes(ext)) {
-      cb(null, true);
-    } else {
-      cb(new Error('File type not allowed'), false);
-    }
-  },
-  limits: {
-    fileSize: 5 * 1024 * 1024, // 5MB limit
-    files: 1 // Only one file at a time
-  }
-});
-
-// Virus scanning integration
-const ClamScan = require('clamscan');
-
-const clamscan = await new ClamScan().init();
-
-async function scanFile(filePath) {
-  try {
-    const scanResult = await clamscan.scanFile(filePath);
-    return scanResult.isInfected === false;
-  } catch (error) {
-    console.error('Virus scan failed:', error);
-    return false;
-  }
+  return input
+    .replace(/<script\b[^<]*(?:(?!<\/script>)<[^<]*)*<\/script>/gi, '')
+    .replace(/javascript:/gi, '')
+    .replace(/on\w+\s*=/gi, '')
+    .trim();
 }
 
-// Secure upload endpoint
-app.post('/api/upload', upload.single('file'), async (req, res) => {
-  try {
-    if (!req.file) {
-      return res.status(400).json({ error: 'No file uploaded' });
-    }
+// SQL injection prevention
+function escapeSql(input) {
+  if (typeof input !== 'string') return input;
 
-    // Scan for viruses
-    const isClean = await scanFile(req.file.path);
-    if (!isClean) {
-      // Delete infected file
-      fs.unlinkSync(req.file.path);
-      return res.status(400).json({ error: 'File contains virus' });
-    }
-
-    // Process clean file
-    const fileUrl = `/uploads/${req.file.filename}`;
-    res.json({
-      message: 'File uploaded successfully',
-      fileUrl,
-      filename: req.file.originalname
-    });
-
-  } catch (error) {
-    // Clean up on error
-    if (req.file) {
-      fs.unlinkSync(req.file.path);
-    }
-    res.status(500).json({ error: 'Upload failed' });
-  }
-});
-```
-
-### Logging and Monitoring
-
-#### **Security Logging**
-
-```javascript
-const winston = require('winston');
-
-// Security logger configuration
-const securityLogger = winston.createLogger({
-  level: 'info',
-  format: winston.format.combine(
-    winston.format.timestamp(),
-    winston.format.json()
-  ),
-  transports: [
-    new winston.transports.File({ filename: 'security.log' }),
-    new winston.transports.Console()
-  ]
-});
-
-// Security event logger
-function logSecurityEvent(event, details) {
-  securityLogger.info({
-    timestamp: new Date().toISOString(),
-    event,
-    ...details
-  });
-}
-
-// Security middleware
-function securityMiddleware() {
-  return (req, res, next) => {
-    // Log request details
-    logSecurityEvent('API_REQUEST', {
-      ip: req.ip,
-      userAgent: req.get('User-Agent'),
-      method: req.method,
-      url: req.url,
-      headers: req.headers,
-      timestamp: new Date().toISOString()
-    });
-
-    // Detect suspicious patterns
-    if (detectSuspiciousActivity(req)) {
-      logSecurityEvent('SUSPICIOUS_ACTIVITY', {
-        ip: req.ip,
-        userAgent: req.get('User-Agent'),
-        pattern: 'SQL injection attempt',
-        url: req.url
-      });
-    }
-
-    next();
-  };
-}
-
-function detectSuspiciousActivity(req) {
-  const suspiciousPatterns = [
-    /union.*select/i,
-    /drop.*table/i,
-    /script.*alert/i,
-    /<.*script.*>/i,
-    /\.\./i
-  ];
-
-  const checkString = JSON.stringify(req.query) +
-                     JSON.stringify(req.body) +
-                     req.url;
-
-  return suspiciousPatterns.some(pattern => pattern.test(checkString));
+  return input
+    .replace(/'/g, "''")
+    .replace(/"/g, '\"')
+    .replace(/\\/g, '\\')
+    .replace(/%/g, '\\%');
 }
 ```
 
 ---
 
-## Common Vulnerabilities
+## Authentication Security
 
-### OWASP API Security Top 10
+### Secure Authentication Patterns
 
-#### **1. Broken Object Level Authorization (BOLA)**
-
-**Description**: API endpoints fail to verify if the user has permission to access specific objects.
+#### 1. Multi-Factor Authentication
 
 ```javascript
-// Vulnerable code - no authorization check
-app.get('/api/users/:id', async (req, res) => {
-  const user = await User.findById(req.params.id);
-  res.json(user); // Any user can access any user data
-});
-
-// Secure code - proper authorization check
-app.get('/api/users/:id', authenticateToken, async (req, res) => {
-  const requestedUserId = parseInt(req.params.id);
-  const currentUserId = req.user.id;
-  const userRole = req.user.role;
-
-  // Authorization check
-  if (requestedUserId !== currentUserId && userRole !== 'admin') {
-    return res.status(403).json({ error: 'Access denied' });
-  }
-
-  const user = await User.findById(requestedUserId);
+// MFA Implementation
+async function authenticateWithMFA(username, password, mfaCode) {
+  // Step 1: Verify username/password
+  const user = await validateCredentials(username, password);
   if (!user) {
-    return res.status(404).json({ error: 'User not found' });
+    throw new Error('Invalid credentials');
   }
 
-  res.json({
-    id: user.id,
-    username: user.username,
-    email: user.email,
-    // Don't return sensitive data
-  });
-});
-```
-
-#### **2. Broken User Authentication**
-
-**Description**: Authentication mechanisms are implemented incorrectly, allowing attackers to compromise user accounts.
-
-```javascript
-// Vulnerable - weak password requirements
-app.post('/api/register', async (req, res) => {
-  const { username, password } = req.body;
-
-  // No password validation
-  if (password.length < 6) { // Too weak
-    return res.status(400).json({ error: 'Password too short' });
-  }
-
-  const user = await createUser(username, password);
-  res.json({ user });
-});
-
-// Secure - strong authentication
-app.post('/api/register',
-  rateLimit({ windowMs: 15 * 60 * 1000, max: 5 }), // Limit registration attempts
-  validateRequest(userRegistrationSchema),
-  async (req, res) => {
-    const { username, email, password } = req.body;
-
-    // Check for existing users
-    const existingUser = await User.findOne({
-      $or: [{ username }, { email }]
-    });
-
-    if (existingUser) {
-      return res.status(409).json({
-        error: 'User already exists'
-      });
+  // Step 2: Verify MFA code if enabled
+  if (user.mfaEnabled) {
+    const isValidMFA = await verifyMFA(user.mfaSecret, mfaCode);
+    if (!isValidMFA) {
+      throw new Error('Invalid MFA code');
     }
-
-    // Hash password with strong algorithm
-    const passwordHash = await bcrypt.hash(password, 12);
-
-    const user = await User.create({
-      username,
-      email,
-      passwordHash
-    });
-
-    // Don't return password hash
-    const { passwordHash, ...userResponse } = user.toJSON();
-    res.status(201).json({ user: userResponse });
-  }
-);
-```
-
-#### **3. Excessive Data Exposure**
-
-**Description**: APIs expose more data than necessary, leading to information leakage.
-
-```javascript
-// Vulnerable - returns all user data
-app.get('/api/users/:id', async (req, res) => {
-  const user = await User.findById(req.params.id);
-  res.json(user); // Excludes sensitive data like password, email verification, etc.
-});
-
-// Secure - returns only necessary data
-app.get('/api/users/:id', async (req, res) => {
-  const user = await User.findById(req.params.id);
-  if (!user) {
-    return res.status(404).json({ error: 'User not found' });
   }
 
-  // Return only safe fields
-  const safeUser = {
-    id: user.id,
-    username: user.username,
-    profile: {
-      firstName: user.firstName,
-      lastName: user.lastName,
-      avatar: user.avatar
-    },
-    joinedAt: user.createdAt
-  };
-
-  res.json(safeUser);
-});
-```
-
-#### **4. Lack of Resources & Rate Limiting**
-
-**Description**: APIs don't implement proper rate limiting, allowing abuse and DoS attacks.
-
-```javascript
-// Vulnerable - no rate limiting
-app.get('/api/data', async (req, res) => {
-  const data = await expensiveDatabaseOperation();
-  res.json(data); // Can be abused to exhaust server resources
-});
-
-// Secure - multiple layers of rate limiting
-const rateLimit = require('express-rate-limit');
-const RedisStore = require('rate-limit-redis');
-
-// Global rate limit
-const globalLimiter = rateLimit({
-  store: new RedisStore({
-    client: redisClient
-  }),
-  windowMs: 15 * 60 * 1000, // 15 minutes
-  max: 1000, // Limit each IP to 1000 requests per windowMs
-  message: 'Too many requests from this IP'
-});
-
-// API-specific rate limit
-const dataLimiter = rateLimit({
-  store: new RedisStore({
-    client: redisClient
-  }),
-  windowMs: 60 * 1000, // 1 minute
-  max: 10, // Limit expensive endpoint to 10 requests per minute
-  message: 'Data endpoint rate limit exceeded'
-});
-
-// User-specific rate limiting
-async function userRateLimit(req, res, next) {
-  const userId = req.user?.id;
-  if (!userId) return next();
-
-  const key = `rate_limit:user:${userId}`;
-  const current = await redisClient.incr(key);
-
-  if (current === 1) {
-    await redisClient.expire(key, 3600); // 1 hour window
-  }
-
-  if (current > 100) { // 100 requests per hour per user
-    return res.status(429).json({
-      error: 'User rate limit exceeded',
-      retryAfter: 3600
-    });
-  }
-
-  next();
+  // Step 3: Generate secure session token
+  const sessionToken = generateSecureToken(user);
+  return { user, sessionToken };
 }
+```
 
-app.use('/api/', globalLimiter);
-app.get('/api/data', dataLimiter, userRateLimit, async (req, res) => {
-  // Expensive operation with proper rate limiting
+#### 2. Session Security
+
+```javascript
+// Secure session configuration
+app.use(session({
+  secret: process.env.SESSION_SECRET,
+  resave: false,
+  saveUninitialized: false,
+  cookie: {
+    secure: process.env.NODE_ENV === 'production', // HTTPS only
+    httpOnly: true,                                     // Prevent XSS
+    maxAge: 24 * 60 * 60 * 1000,                          // 1 day
+    sameSite: 'strict'                                   // CSRF protection
+  }
+}));
+
+// Session management
+app.post('/api/logout', (req, res) => {
+  req.session.destroy(err => {
+    if (err) {
+      return res.status(500).json({ error: 'Logout failed' });
+    }
+    res.clearCookie('connect.sid');
+    res.json({ message: 'Logged out successfully' });
+  });
 });
 ```
 
-#### **5. Broken Function Level Authorization**
+---
 
-**Description**: API endpoints don't properly authorize access to administrative functions.
+## Authorization Security
+
+### Secure Authorization Patterns
+
+#### 1. Principle of Least Privilege
+
+**📌 Think of it like**: A janitor only gets keys to the cleaning closet, not the CEO's office - users should have only the permissions they absolutely need.
 
 ```javascript
-// Vulnerable - assumes authentication = authorization
-app.delete('/api/users/:id', authenticateToken, async (req, res) => {
-  // Any authenticated user can delete any user!
-  await User.findByIdAndDelete(req.params.id);
-  res.json({ message: 'User deleted' });
-});
-
-// Secure - proper authorization checks
-app.delete('/api/users/:id', authenticateToken, async (req, res) => {
-  const targetUserId = parseInt(req.params.id);
-  const currentUser = req.user;
-
-  // Authorization checks
-  const canDelete =
-    currentUser.role === 'admin' ||
-    (currentUser.role === 'moderator' && currentUser.id !== targetUserId);
-
-  if (!canDelete) {
-    return res.status(403).json({
-      error: 'Insufficient privileges to delete user'
-    });
-  }
-
-  // Log administrative action
-  securityLogger.info('USER_DELETED', {
-    deletedBy: currentUser.id,
-    deletedUser: targetUserId,
-    timestamp: new Date().toISOString()
-  });
-
-  await User.findByIdAndDelete(targetUserId);
-  res.json({ message: 'User deleted successfully' });
-});
-
-// Role-based authorization middleware
-function requireRole(requiredRoles) {
+// Check minimum required permissions
+function requireMinimumPermission(requiredLevel) {
   return (req, res, next) => {
-    if (!req.user) {
-      return res.status(401).json({ error: 'Authentication required' });
-    }
+    const userPermission = req.user.permissionLevel;
 
-    const hasRole = Array.isArray(requiredRoles)
-      ? requiredRoles.includes(req.user.role)
-      : req.user.role === requiredRoles;
-
-    if (!hasRole) {
+    if (userPermission < requiredLevel) {
       return res.status(403).json({
-        error: 'Insufficient privileges'
+        error: 'Insufficient permissions',
+        required: requiredLevel,
+        current: userPermission
       });
     }
 
@@ -718,591 +373,798 @@ function requireRole(requiredRoles) {
 }
 
 // Usage
-app.get('/api/admin/users',
-  authenticateToken,
-  requireRole(['admin', 'moderator']),
-  getAdminUsers
+app.delete('/api/admin/users/:id',
+  authMiddleware,
+  requireMinimumPermission('admin'), // Only admins can delete users
+  async (req, res) => {
+    await User.findByIdAndDelete(req.params.id);
+    res.json({ success: true });
+  }
 );
 ```
 
-#### **6. Mass Assignment**
-
-**Description**: API endpoints automatically bind request data to object properties without proper filtering.
+#### 2. Role-Based Access Control (RBAC)
 
 ```javascript
-// Vulnerable - mass assignment
-app.put('/api/users/:id', async (req, res) => {
-  const user = await User.findById(req.params.id);
-  Object.assign(user, req.body); // Danger! Allows any field to be updated
-  await user.save();
-  res.json(user);
-});
+// RBAC Middleware
+function checkRole(requiredRoles) {
+  return async (req, res, next) => {
+    const userRoles = await getUserRoles(req.user.id);
+    const hasRole = requiredRoles.some(role => userRoles.includes(role));
 
-// Secure - explicit field assignment
-app.put('/api/users/:id',
-  authenticateToken,
-  validateRequest(userUpdateSchema),
+    if (!hasRole) {
+      return res.status(403).json({
+        error: 'Access denied',
+        required: requiredRoles,
+        userRoles
+      });
+    }
+
+    next();
+  };
+}
+
+// Usage
+app.get('/api/analytics',
+  authMiddleware,
+  checkRole(['admin', 'analyst']),
   async (req, res) => {
-    const userId = parseInt(req.params.id);
-    const currentUserId = req.user.id;
+    const analytics = await getAnalyticsData();
+    res.json(analytics);
+  }
+);
+```
 
-    // Authorization check
-    if (userId !== currentUserId) {
-      return res.status(403).json({ error: 'Can only update own profile' });
-    }
+---
 
-    const user = await User.findById(userId);
-    if (!user) {
-      return res.status(404).json({ error: 'User not found' });
-    }
+## Rate Limiting and Abuse Prevention
 
-    // Explicit field assignment
-    const allowedFields = ['firstName', 'lastName', 'bio', 'avatar'];
-    allowedFields.forEach(field => {
-      if (req.body[field] !== undefined) {
-        user[field] = req.body[field];
-      }
-    });
+### Rate Limiting Strategies
 
-    await user.save();
+#### 1. Token Bucket Algorithm
 
-    // Return safe user data
-    const safeUser = {
-      id: user.id,
-      username: user.username,
-      firstName: user.firstName,
-      lastName: user.lastName,
-      bio: user.bio,
-      avatar: user.avatar
+```javascript
+// Token Bucket Implementation
+class RateLimiter {
+  constructor(options) {
+    this.tokens = new Map();
+    this.capacity = options.capacity || 100;
+    this.refillRate = options.refillRate || 10;
+    this.windowMs = options.windowMs || 60000; // 1 minute
+  }
+
+  consume(key, tokens = 1) {
+    const now = Date.now();
+    const bucket = this.tokens.get(key) || {
+      tokens: this.capacity,
+      lastRefill: now
     };
 
-    res.json(safeUser);
+    // Refill tokens based on time elapsed
+    const timePassed = now - bucket.lastRefill;
+    const tokensToAdd = Math.floor((timePassed / this.windowMs) * this.refillRate);
+    bucket.tokens = Math.min(this.capacity, bucket.tokens + tokensToAdd);
+    bucket.lastRefill = now;
+
+    if (bucket.tokens >= tokens) {
+      bucket.tokens -= tokens;
+      this.tokens.set(key, bucket);
+      return true;
+    }
+
+    return false;
   }
-);
+
+  // Get rate limit status
+  getStatus(key) {
+    const bucket = this.tokens.get(key);
+    if (!bucket) return { tokens: this.capacity };
+
+    const now = Date.now();
+    const timePassed = now - bucket.lastRefill;
+    const tokensToAdd = Math.floor((timePassed / this.windowMs) * this.refillRate);
+    const currentTokens = Math.min(this.capacity, bucket.tokens + tokensToAdd);
+
+    return {
+      tokens: currentTokens,
+      capacity: this.capacity,
+      refillRate: this.refillRate
+    };
+  }
+}
+
+// Rate limiting middleware
+const rateLimiter = new RateLimiter({
+  capacity: 100,
+  refillRate: 10,
+  windowMs: 60000
+});
+
+app.use('/api/*', (req, res, next) => {
+  const clientId = req.ip; // Use IP as client identifier
+
+  if (!rateLimiter.consume(clientId, 1)) {
+    const status = rateLimiter.getStatus(clientId);
+
+    return res.status(429).json({
+      error: 'Rate limit exceeded',
+      retryAfter: Math.ceil((this.capacity - status.tokens) / this.refillRate),
+      limit: this.capacity,
+      remaining: status.tokens
+    });
+  }
+
+  next();
+});
 ```
 
-#### **7. Security Misconfiguration**
-
-**Description**: APIs have misconfigured security headers, CORS, or other security settings.
+#### 2. Sliding Window Rate Limiting
 
 ```javascript
-// Vulnerable - missing security headers and misconfigured CORS
-const cors = require('cors');
-app.use(cors()); // Allows all origins!
+// Sliding Window Implementation
+class SlidingWindowRateLimiter {
+  constructor(options) {
+    this.requests = new Map();
+    this.windowMs = options.windowMs || 60000; // 1 minute
+    this.maxRequests = options.maxRequests || 100;
+  }
 
-// Secure - proper security configuration
-const corsOptions = {
-  origin: function (origin, callback) {
-    const allowedOrigins = [
-      'https://app.example.com',
-      'https://admin.example.com'
-    ];
+  isAllowed(clientId) {
+    const now = Date.now();
+    const windowStart = now - this.windowMs;
+    const clientRequests = this.requests.get(clientId) || [];
 
-    // Allow requests with no origin (mobile apps, curl)
-    if (!origin) return callback(null, true);
+    // Remove old requests outside the window
+    const validRequests = clientRequests.filter(timestamp => timestamp > windowStart);
 
-    if (allowedOrigins.includes(origin)) {
-      callback(null, true);
-    } else {
-      callback(new Error('Not allowed by CORS'));
+    // Check if under limit
+    if (validRequests.length >= this.maxRequests) {
+      return false;
     }
-  },
-  credentials: true,
-  methods: ['GET', 'POST', 'PUT', 'DELETE'],
-  allowedHeaders: ['Content-Type', 'Authorization']
+
+    // Add current request
+    validRequests.push(now);
+    this.requests.set(clientId, validRequests);
+
+    return true;
+  }
+
+  // Clean up old entries periodically
+  cleanup() {
+    const now = Date.now();
+    const cutoff = now - this.windowMs * 2; // Keep a bit longer than window
+
+    for (const [clientId, requests] of this.requests.entries()) {
+      const validRequests = requests.filter(timestamp => timestamp > cutoff);
+      if (validRequests.length === 0) {
+        this.requests.delete(clientId);
+      } else {
+        this.requests.set(clientId, validRequests);
+      }
+    }
+  }
+}
+
+// Clean up every 5 minutes
+setInterval(() => {
+  rateLimiter.cleanup();
+}, 5 * 60 * 1000);
+```
+
+---
+
+## Data Encryption
+
+### Encryption Best Practices
+
+#### 1. Data in Transit (HTTPS)
+
+```javascript
+// Force HTTPS in production
+app.use((req, res, next) => {
+  if (process.env.NODE_ENV === 'production' && !req.secure) {
+    return res.redirect(301, `https://${req.headers.host}${req.url}`);
+  }
+  next();
+});
+
+// Configure strong TLS
+const httpsOptions = {
+  key: fs.readFileSync('server.key'),
+  cert: fs.readFileSync('server.crt'),
+  ca: fs.readFileSync('ca.crt'),
+  minVersion: 'TLSv1.2',
+  ciphers: [
+    'TLS_ECDHE_RSA_WITH_AES_256_GCM_SHA384',
+    'TLS_ECDHE_RSA_WITH_AES_128_GCM_SHA256',
+    'TLS_ECDHE_RSA_WITH_AES_256_CBC_SHA384',
+    'TLS_ECDHE_RSA_WITH_AES_128_CBC_SHA256'
+  ],
+  honorCipherOrder: true
 };
 
-app.use(cors(corsOptions));
-
-// Security headers middleware
-app.use(helmet({
-  contentSecurityPolicy: {
-    directives: {
-      defaultSrc: ["'self'"],
-      styleSrc: ["'self'", "'unsafe-inline'"],
-      scriptSrc: ["'self'"],
-      imgSrc: ["'self'", "data:", "https:"]
-    }
-  },
-  hsts: {
-    maxAge: 31536000,
-    includeSubDomains: true,
-    preload: true
-  }
-}));
-
-// Disable unnecessary features
-app.disable('x-powered-by');
-app.set('etag', false); // Prevent information leakage through ETags
+https.createServer(httpsOptions, app).listen(443);
 ```
 
-#### **8. Injection**
-
-**Description**: API endpoints fail to properly sanitize input, allowing injection attacks.
+#### 2. Data at Rest (Database Encryption)
 
 ```javascript
-// Vulnerable - SQL injection
-app.get('/api/users', async (req, res) => {
-  const { role } = req.query;
-  const query = `SELECT * FROM users WHERE role = '${role}'`; // SQL injection!
-  const users = await db.query(query);
-  res.json(users);
-});
+// Field-level encryption
+const crypto = require('crypto');
 
-// Secure - parameterized queries
-app.get('/api/users',
-  validateRequest(userQuerySchema),
-  async (req, res) => {
-    const { role, limit = 20, offset = 0 } = req.query;
-
-    let query = 'SELECT id, username, email FROM users';
-    const params = [];
-
-    if (role && ['user', 'admin', 'moderator'].includes(role)) {
-      query += ' WHERE role = $1';
-      params.push(role);
-    }
-
-    query += ' ORDER BY id LIMIT $2 OFFSET $3';
-    params.push(limit, offset);
-
-    const users = await db.query(query, params);
-    res.json(users);
-  }
-);
-
-// NoSQL injection protection
-app.get('/api/products', async (req, res) => {
-  const { category, minPrice, maxPrice } = req.query;
-
-  // Build filter object safely
-  const filter = {};
-
-  if (category && ['electronics', 'clothing', 'books'].includes(category)) {
-    filter.category = category;
+class EncryptionService {
+  constructor(secretKey) {
+    this.algorithm = 'aes-256-gcm';
+    this.secretKey = crypto.scryptSync(secretKey, 'salt', 64);
   }
 
-  if (minPrice && !isNaN(minPrice)) {
-    filter.price = { ...filter.price, $gte: parseFloat(minPrice) };
+  encrypt(text) {
+    const iv = crypto.randomBytes(16);
+    const cipher = crypto.createCipher(this.algorithm, this.secretKey, iv);
+    let encrypted = cipher.update(text, 'utf8', 'hex');
+    encrypted += cipher.final('hex');
+
+    return {
+      encrypted,
+      iv: iv.toString('hex')
+    };
   }
 
-  if (maxPrice && !isNaN(maxPrice)) {
-    filter.price = { ...filter.price, $lte: parseFloat(maxPrice) });
+  decrypt(encryptedData) {
+    const decipher = crypto.createDecipher(
+      this.algorithm,
+      this.secretKey,
+      Buffer.from(encryptedData.iv, 'hex')
+    );
+
+    let decrypted = decipher.update(encryptedData.encrypted, 'hex', 'utf8');
+    decrypted += decipher.final('utf8');
+
+    return decrypted;
   }
+}
 
-  const products = await Product.find(filter)
-    .select('name price category')
-    .limit(20);
+// Usage in models
+const encryption = new EncryptionService(process.env.ENCRYPTION_KEY);
 
-  res.json(products);
-});
+// Encrypt sensitive fields before saving
+user.email = encryption.encrypt(user.email);
+user.ssn = encryption.encrypt(user.ssn);
 ```
 
-#### **9. Insufficient Logging & Monitoring**
+---
 
-**Description**: APIs lack proper logging and monitoring to detect and respond to security incidents.
+## Logging and Monitoring
 
-```javascript
-// Vulnerable - no security logging
-app.post('/api/login', async (req, res) => {
-  const { email, password } = req.body;
-  const user = await User.findOne({ email });
-
-  if (user && await bcrypt.compare(password, user.password)) {
-    res.json({ token: generateToken(user) });
-  } else {
-    res.status(401).json({ error: 'Invalid credentials' });
-  }
-});
-
-// Secure - comprehensive security logging
-app.post('/api/login',
-  rateLimit({
-    windowMs: 15 * 60 * 1000,
-    max: 5,
-    message: 'Too many login attempts'
-  }),
-  async (req, res) => {
-    const { email, password } = req.body;
-    const clientIP = req.ip;
-    const userAgent = req.get('User-Agent');
-
-    // Log login attempt
-    securityLogger.info('LOGIN_ATTEMPT', {
-      email,
-      ip: clientIP,
-      userAgent,
-      timestamp: new Date().toISOString()
-    });
-
-    try {
-      const user = await User.findOne({ email });
-
-      if (!user) {
-        // Log failed login - user not found
-        securityLogger.warn('LOGIN_FAILED_USER_NOT_FOUND', {
-          email,
-          ip: clientIP,
-          userAgent,
-          reason: 'User does not exist'
-        });
-
-        return res.status(401).json({ error: 'Invalid credentials' });
-      }
-
-      if (await bcrypt.compare(password, user.password)) {
-        // Successful login
-        const token = generateToken(user);
-
-        securityLogger.info('LOGIN_SUCCESS', {
-          userId: user.id,
-          email: user.email,
-          ip: clientIP,
-          userAgent
-        });
-
-        res.json({ token, user: { id: user.id, email: user.email } });
-      } else {
-        // Failed login - wrong password
-        securityLogger.warn('LOGIN_FAILED_WRONG_PASSWORD', {
-          userId: user.id,
-          email: user.email,
-          ip: clientIP,
-          userAgent
-        });
-
-        res.status(401).json({ error: 'Invalid credentials' });
-      }
-    } catch (error) {
-      securityLogger.error('LOGIN_ERROR', {
-        email,
-        ip: clientIP,
-        error: error.message
-      });
-
-      res.status(500).json({ error: 'Login failed' });
-    }
-  }
-);
-```
-
-#### **10. Improper Assets Management**
-
-**Description**: APIs expose sensitive information through documentation, error messages, or debug endpoints.
+### Security Logging Best Practices
 
 ```javascript
-// Vulnerable - exposes sensitive information
-app.get('/api/health', (req, res) => {
-  res.json({
-    status: 'healthy',
-    database: process.env.DATABASE_URL, // Exposes DB connection string!
-    redisPassword: process.env.REDIS_PASSWORD, // Exposes credentials!
-    environment: process.env.NODE_ENV
-  });
+const winston = require('winston');
+
+// Security-focused logger
+const securityLogger = winston.createLogger({
+  level: 'info',
+  format: winston.format.combine(
+    winston.format.timestamp(),
+    winston.format.errors({ stack: true }),
+    winston.format.json()
+  ),
+  defaultMeta: { service: 'api-security' },
+  transports: [
+    new winston.transports.File({
+      filename: 'security.log',
+      level: 'warn'
+    }),
+    new winston.transports.Console({
+      level: 'error'
+    })
+  ]
 });
 
-// Secure - health check without sensitive data
-app.get('/api/health', async (req, res) => {
-  const health = {
-    status: 'healthy',
+// Security event logging
+function logSecurityEvent(event, req) {
+  const logData = {
+    event,
     timestamp: new Date().toISOString(),
-    uptime: process.uptime(),
-    version: process.env.npm_package_version
+    ip: req.ip,
+    userAgent: req.get('User-Agent'),
+    userId: req.user?.id,
+    endpoint: req.path,
+    method: req.method,
+    statusCode: res.statusCode,
+    headers: {
+      'x-forwarded-for': req.get('X-Forwarded-For'),
+      'x-real-ip': req.get('X-Real-IP')
+    }
   };
 
-  try {
-    // Check database connectivity without exposing credentials
-    await db.query('SELECT 1');
-    health.database = 'connected';
-  } catch (error) {
-    health.database = 'disconnected';
-    health.status = 'unhealthy';
+  if (event.type === 'ERROR') {
+    securityLogger.error('Security Event', logData);
+  } else if (event.type === 'WARNING') {
+    securityLogger.warn('Security Event', logData);
+  } else {
+    securityLogger.info('Security Event', logData);
   }
+}
 
-  try {
-    // Check Redis connectivity
-    await redisClient.ping();
-    health.redis = 'connected';
-  } catch (error) {
-    health.redis = 'disconnected';
-    health.status = 'unhealthy';
-  }
+// Security monitoring middleware
+function securityMonitoring(req, res, next) {
+  const startTime = Date.now();
 
-  const statusCode = health.status === 'healthy' ? 200 : 503;
-  res.status(statusCode).json(health);
-});
+  // Log authentication events
+  res.on('finish', () => {
+    const duration = Date.now() - startTime;
 
-// Error handling without information leakage
-function errorHandler(err, req, res, next) {
-  securityLogger.error('API_ERROR', {
-    error: err.message,
-    stack: err.stack,
-    url: req.url,
-    method: req.method,
-    ip: req.ip
+    // Log suspicious activity
+    if (res.statusCode === 401 || res.statusCode === 403) {
+      logSecurityEvent({
+        type: 'WARNING',
+        message: 'Access Denied',
+        reason: res.statusCode === 401 ? 'Authentication' : 'Authorization'
+      }, req);
+    }
+
+    // Log rate limiting
+    if (res.statusCode === 429) {
+      logSecurityEvent({
+        type: 'WARNING',
+        message: 'Rate Limit Exceeded'
+      }, req);
+    }
+
+    // Log long-running requests
+    if (duration > 5000) {
+      logSecurityEvent({
+        type: 'INFO',
+        message: 'Slow API Call',
+        duration: duration
+      }, req);
+    }
   });
 
-  // Don't expose internal error details in production
-  if (process.env.NODE_ENV === 'production') {
-    res.status(500).json({
-      error: 'Internal server error',
-      requestId: req.id
-    });
-  } else {
-    res.status(500).json({
-      error: err.message,
-      stack: err.stack
-    });
+  next();
+}
+```
+
+### Anomaly Detection
+
+```javascript
+// Anomaly Detection System
+class AnomalyDetector {
+  constructor() {
+    this.baselineMetrics = {
+      averageResponseTime: 500,
+      errorRate: 0.01,
+      requestFrequency: 100
+    };
+    this.anomalyThresholds = {
+      responseTimeMultiplier: 5,
+      errorRateMultiplier: 10,
+      requestFrequencyMultiplier: 3
+    };
+  }
+
+  detectAnomaly(metrics) {
+    const anomalies = [];
+
+    // Check response time anomalies
+    const responseTimeRatio = metrics.averageResponseTime / this.baselineMetrics.averageResponseTime;
+    if (responseTimeRatio > this.anomalyThresholds.responseTimeMultiplier) {
+      anomalies.push({
+        type: 'SLOW_RESPONSE_TIME',
+        value: metrics.averageResponseTime,
+        threshold: this.baselineMetrics.averageResponseTime * this.anomalyThresholds.responseTimeMultiplier
+      });
+    }
+
+    // Check error rate anomalies
+    const errorRateRatio = metrics.errorRate / this.baselineMetrics.errorRate;
+    if (errorRateRatio > this.anomalyThresholds.errorRateMultiplier) {
+      anomalies.push({
+        type: 'HIGH_ERROR_RATE',
+        value: metrics.errorRate,
+        threshold: this.baselineMetrics.errorRate * this.anomalyThresholds.errorRateMultiplier
+      });
+    }
+
+    // Check request frequency anomalies
+    const frequencyRatio = metrics.requestFrequency / this.baselineMetrics.requestFrequency;
+    if (frequencyRatio > this.anomalyThresholds.requestFrequencyMultiplier) {
+      anomalies.push({
+        type: 'HIGH_REQUEST_FREQUENCY',
+        value: metrics.requestFrequency,
+        threshold: this.baselineMetrics.requestFrequency * this.anomalyThresholds.requestFrequencyMultiplier
+      });
+    }
+
+    return anomalies;
   }
 }
 ```
 
-### Security Testing
+---
 
-#### **Automated Security Scanning**
+## Security Headers
+
+### Essential Security Headers
+
+| Header | Purpose | Implementation |
+|--------|---------|----------------|
+| **Content-Security-Policy** | Prevent XSS attacks | `default-src 'self'` |
+| **X-Frame-Options** | Prevent clickjacking | `DENY` |
+| **X-XSS-Protection** | XSS protection mode | `1; mode=block` |
+| **Strict-Transport-Security** | Force HTTPS | `max-age=31536000` |
+| **X-Content-Type-Options** | MIME type sniffing | `nosniff` |
+| **Referrer-Policy** | Referrer policy | `strict-origin-when-cross-origin` |
+
+### Implementation
 
 ```javascript
-// Security testing with OWASP ZAP
-const ZapClient = require('zaproxy');
+// Security headers middleware
+function securityHeaders(req, res, next) {
+  // Content Security Policy
+  res.setHeader(
+    'Content-Security-Policy',
+    "default-src 'self'; script-src 'self' 'unsafe-inline' 'unsafe-eval'; style-src 'self' 'unsafe-inline'; img-src 'self' data: https:; font-src 'self';"
+  );
 
-const zaproxy = new ZapClient({
-  proxy: 'http://localhost:8080'
-});
+  // Clickjacking protection
+  res.setHeader('X-Frame-Options', 'DENY');
 
-async function runSecurityScan(targetUrl) {
-  try {
-    // Start spidering
-    const spiderId = await zaproxy.spider.scan(targetUrl);
-    console.log('Spider started with ID:', spiderId);
+  // XSS protection
+  res.setHeader('X-XSS-Protection', '1; mode=block');
 
-    // Wait for spider to complete
-    let progress = 0;
-    while (progress < 100) {
-      const status = await zaproxy.spider.status(spiderId);
-      progress = status.status;
-      console.log(`Spider progress: ${progress}%`);
-      await new Promise(resolve => setTimeout(resolve, 1000));
-    }
+  // HSTS (only in production)
+  if (process.env.NODE_ENV === 'production') {
+    res.setHeader(
+      'Strict-Transport-Security',
+      'max-age=31536000; includeSubDomains; preload'
+    );
+  }
 
-    // Run active scan
-    const scanId = await zaproxy.ascan.scan(targetUrl);
-    console.log('Active scan started with ID:', scanId);
+  // Prevent MIME type sniffing
+  res.setHeader('X-Content-Type-Options', 'nosniff');
 
-    // Wait for scan to complete
-    let scanProgress = 0;
-    while (scanProgress < 100) {
-      const status = await zaproxy.ascan.status(scanId);
-      scanProgress = status.status;
-      console.log(`Scan progress: ${scanProgress}%`);
-      await new Promise(resolve => setTimeout(resolve, 5000));
-    }
+  // Referrer policy
+  res.setHeader('Referrer-Policy', 'strict-origin-when-cross-origin');
 
-    // Get alerts (vulnerabilities)
-    const alerts = await zaproxy.core.alerts();
-    return alerts;
-  } catch (error) {
-    console.error('Security scan failed:', error);
-    throw error;
+  // Remove server information
+  res.removeHeader('X-Powered-By');
+  res.removeHeader('Server');
+
+  next();
+}
+
+// Apply security headers to all routes
+app.use(securityHeaders);
+```
+
+---
+
+## API Key Security
+
+### API Key Management
+
+```javascript
+// Secure API Key Generator
+class APIKeyGenerator {
+  generateKey() {
+    const prefix = 'ak_';
+    const randomPart = crypto.randomBytes(32).toString('hex');
+    return prefix + randomPart;
+  }
+
+  generateSecret() {
+    return crypto.randomBytes(64).toString('hex');
   }
 }
+
+// API Key Storage with Encryption
+class APIKeyStore {
+  constructor(encryptionKey) {
+    this.cipher = crypto.createCipher('aes-256-gcm', encryptionKey);
+    this.decipher = crypto.createDecipher('aes-256-gcm', encryptionKey);
+  }
+
+  async storeKey(keyData) {
+    // Encrypt sensitive data
+    const encryptedKey = this.cipher.update(JSON.stringify(keyData), 'utf8', 'hex');
+    const encryptedSecret = this.cipher.update(keyData.secret, 'utf8', 'hex');
+
+    // Store only encrypted version
+    await db.query(
+      'INSERT INTO api_keys (id, encrypted_key, encrypted_secret, created_at) VALUES (?, ?, ?, ?)',
+      [keyData.id, encryptedKey, encryptedSecret, new Date()]
+    );
+  }
+
+  async getKey(id) {
+    // Retrieve and decrypt key
+    const result = await db.query(
+      'SELECT encrypted_key, encrypted_secret FROM api_keys WHERE id = ?',
+      [id]
+    );
+
+    if (result.length === 0) {
+      return null;
+    }
+
+    // Decrypt data
+    const encryptedData = result[0];
+    const decryptedKey = this.decipher.update(encryptedData.encrypted_key, 'hex', 'utf8');
+    const decryptedSecret = this.decipher.update(encryptedData.encrypted_secret, 'hex', 'utf8');
+
+    return {
+      id: id,
+      key: decryptedKey,
+      secret: decryptedSecret
+    };
+  }
+}
+```
+
+### API Key Usage
+
+```javascript
+// API Key Middleware
+function apiKeyAuth(req, res, next) {
+  const apiKey = req.headers['x-api-key'];
+
+  if (!apiKey) {
+    return res.status(401).json({
+      error: 'API key required',
+      message: 'Please provide a valid API key in X-API-Key header'
+    });
+  }
+
+  // Validate and get API key details
+  const keyData = await apiKeyStore.getKey(apiKey);
+  if (!keyData) {
+    return res.status(401).json({
+      error: 'Invalid API key'
+    });
+  }
+
+  // Add key info to request
+  req.apiKey = keyData;
+  next();
+}
+
+// Rate limiting per API key
+app.use('/api/*', apiKeyAuth, (req, res, next) => {
+  // Apply rate limiting based on API key
+  const keyLimiter = rateLimiters.getOrCreate(req.apiKey.id, {
+    windowMs: 60000,
+    max: 1000
+  });
+
+  if (!keyLimiter.consume()) {
+    return res.status(429).json({
+      error: 'Rate limit exceeded for this API key'
+    });
+  }
+
+  next();
+});
+```
+
+---
+
+## Security Testing
+
+### Security Testing Strategies
+
+#### 1. Penetration Testing Tools
+
+| Tool | Purpose | Usage |
+|------|---------|------|
+| **OWASP ZAP** | Automated security scanning | `zap-baseline.py -t http://localhost:3000` |
+| **Burp Suite** | Manual penetration testing | Manual testing suite |
+| **SQLMap** | SQL injection testing | `sqlmap -u "http://target.com/api"` |
+| **Nmap** | Port and service scanning | `nmap -sV target.com` |
+
+#### 2. Security Test Cases
+
+```javascript
+// Security Test Examples
+describe('API Security Tests', () => {
+  describe('Authentication Tests', () => {
+    test('should reject requests without authentication', async () => {
+      const response = await request(app)
+        .get('/api/users')
+        .expect(401);
+    });
+
+    test('should reject requests with invalid tokens', async () => {
+      const response = await request(app)
+        .get('/api/users')
+        .set('Authorization', 'Bearer invalid-token')
+        .expect(401);
+    });
+  });
+
+  describe('Authorization Tests', () => {
+    test('should prevent user from accessing admin endpoints', async () => {
+      const userToken = await generateToken('user');
+
+      const response = await request(app)
+        .delete('/api/admin/users/123')
+        .set('Authorization', `Bearer ${userToken}`)
+        .expect(403);
+    });
+
+    test('should allow admin to access admin endpoints', async () => {
+      const adminToken = await generateToken('admin');
+
+      const response = await request(app)
+        .get('/api/admin/analytics')
+        .set('Authorization', `Bearer ${adminToken}`)
+        .expect(200);
+    });
+  });
+
+  describe('Input Validation Tests', () => {
+    test('should reject SQL injection attempts', async () => {
+      const maliciousInput = "'; DROP TABLE users; --";
+
+      const response = await request(app)
+        .post('/api/users')
+        .send({ email: maliciousInput })
+        .expect(400);
+    });
+
+    test('should sanitize XSS attempts', async () => {
+      const xssPayload = '<script>alert("XSS")</script>';
+
+      const response = await request(app)
+        .post('/api/comments')
+        .send({ text: xssPayload })
+        .expect(201);
+
+      // Verify script was not executed
+      expect(response.body.text).not.toContain('<script>');
+    });
+  });
+
+  describe('Rate Limiting Tests', () => {
+    test('should enforce rate limiting', async () => {
+      const requests = Array(100).fill().map(() =>
+        request(app).get('/api/users')
+      );
+
+      const responses = await Promise.allSettled(requests);
+
+      const rateLimited = responses.filter(r =>
+        r.status === 429
+      );
+
+      expect(rateLimited.length).toBeGreaterThan(0);
+    });
+  });
+});
 ```
 
 ---
 
 ## Interview Questions
 
-### **Q1: What is the OWASP API Security Top 10 and why is it important?**
-**Answer:**
-The OWASP API Security Top 10 is a list of the most critical security risks for APIs:
-1. Broken Object Level Authorization
-2. Broken User Authentication
-3. Excessive Data Exposure
-4. Lack of Resources & Rate Limiting
-5. Broken Function Level Authorization
-6. Mass Assignment
-7. Security Misconfiguration
-8. Injection
-9. Insufficient Logging & Monitoring
-10. Improper Assets Management
+### Basic Questions
 
-**Important because:** Provides a prioritized list of API security risks to focus on during development and testing.
+1. **What is the OWASP Top 10?**
+   - A list of the most critical web application security risks
+   - Updated regularly by the OWASP community
+   - Provides prioritized guidance for securing applications
 
-### **Q2: How do you prevent Broken Object Level Authorization (BOLA)?**
-**Answer:**
-**Prevention strategies:**
-- **Authorization checks**: Verify user owns/has access to requested resource
-- **Indirect object references**: Use database IDs instead of direct object references
-- **Access control lists**: Implement proper RBAC/ABAC systems
-- **Consistent authorization**: Apply same checks across all endpoints
-- **Testing**: Automated tests for authorization bypass attempts
+2. **What is the difference between authentication and authorization?**
+   - Authentication: Verifying who you are (identity)
+   - Authorization: Verifying what you're allowed to do (permissions)
+   - Both are essential but serve different purposes
 
-```javascript
-// Example prevention
-app.get('/api/users/:id', authenticateToken, async (req, res) => {
-  const requestedId = req.params.id;
-  const currentUserId = req.user.id;
+3. **What is defense in depth?**
+   - Multiple layers of security controls
+   - If one layer fails, others still protect the system
+   - Includes network, authentication, authorization, encryption layers
 
-  if (requestedId !== currentUserId && req.user.role !== 'admin') {
-    return res.status(403).json({ error: 'Access denied' });
-  }
-  // ... proceed with request
-});
-```
+### Intermediate Questions
 
-### **Q3: What are the best practices for API key management?**
-**Answer:**
-**Best practices:**
-- **Secure generation**: Use cryptographically secure random key generation
-- **Secure storage**: Hash keys server-side, don't store in plain text
-- **Rotation**: Regular key rotation policies
-- **Rate limiting**: Per-key rate limiting to prevent abuse
-- **Scope limitations**: Keys should have minimum necessary permissions
-- **Monitoring**: Log key usage and detect anomalies
-- **Revocation**: Ability to quickly revoke compromised keys
+4. **How do you prevent SQL injection?**
+   - Use parameterized queries/ORMs
+   - Never concatenate strings for SQL queries
+   - Validate and sanitize all user inputs
+   - Use least privilege database access
 
-### **Q4: How do you implement proper rate limiting for APIs?**
-**Answer:**
-**Implementation approaches:**
-- **Multiple layers**: Global, per-IP, per-user, per-endpoint limits
-- **Algorithms**: Token bucket, sliding window, fixed window
-- **Storage**: Redis or similar for distributed rate limiting
-- **Responses**: Include rate limit headers and retry-after
-- **Monitoring**: Track rate limit violations for security monitoring
+5. **What are CORS headers and why are they important?**
+   - Control cross-origin requests
+   - Prevent malicious cross-site requests
+   - Specify which domains can access your API
+   - Essential for web security
 
-```javascript
-// Token bucket implementation
-class TokenBucket {
-  constructor(capacity, refillRate) {
-    this.capacity = capacity;
-    this.tokens = capacity;
-    this.refillRate = refillRate;
-    this.lastRefill = Date.now();
-  }
+6. **How does JWT token security work?**
+   - Cryptographically signed tokens
+   - Include expiration and issuer information
+   - Use strong secrets for signing
+   - Verify token integrity on each request
 
-  consume() {
-    this.refill();
-    if (this.tokens >= 1) {
-      this.tokens--;
-      return true;
-    }
-    return false;
-  }
+### Advanced Questions
 
-  refill() {
-    const now = Date.now();
-    const timePassed = (now - this.lastRefill) / 1000;
-    this.tokens = Math.min(this.capacity,
-                          this.tokens + timePassed * this.refillRate);
-    this.lastRefill = now;
-  }
-}
-```
+7. **How would you implement a zero-trust architecture for APIs?**
+   - Verify all requests regardless of source
+   - Implement strict authentication and authorization
+   - Use mutual TLS for service-to-service communication
+   - Apply principle of least privilege
 
-### **Q5: What security headers should be implemented for APIs?**
-**Answer:**
-**Essential security headers:**
-- **Strict-Transport-Security**: Force HTTPS connections
-- **X-Content-Type-Options**: Prevent MIME-type sniffing
-- **X-Frame-Options**: Prevent clickjacking
-- **X-XSS-Protection**: Enable XSS protection
-- **Content-Security-Policy**: Control resource loading
-- **Referrer-Policy**: Control referrer information
-- **Access-Control-Allow-Origin**: Proper CORS configuration
+8. **What are the best practices for securing microservices APIs?**
+   - Service mesh for secure communication
+   - Zero-trust network policies
+   - Secure service discovery
+   - End-to-end encryption
+   - Centralized identity and access management
 
-### **Q6: How do you prevent SQL injection in APIs?**
-**Answer:**
-**Prevention methods:**
-- **Parameterized queries**: Use prepared statements
-- **ORM frameworks**: Use built-in protection
-- **Input validation**: Validate and sanitize all inputs
-- **Least privilege**: Database users with minimal permissions
-- **Error handling**: Don't expose database errors to clients
-
-```javascript
-// Parameterized query example
-const query = 'SELECT * FROM users WHERE email = $1 AND status = $2';
-const result = await db.query(query, [email, 'active']);
-```
-
-### **Q7: What should be logged for API security monitoring?**
-**Answer:**
-**Essential logging:**
-- **Authentication events**: Successful/failed logins
-- **Authorization failures**: Access denied events
-- **API requests**: Method, endpoint, IP, user agent
-- **Rate limit violations**: Excessive usage attempts
-- **Input validation failures**: Suspicious input patterns
-- **Errors and exceptions**: Application errors
-- **Administrative actions**: Important system changes
+9. **How would you handle security vulnerabilities in a legacy API?**
+   - Implement security middleware without breaking changes
+   - Use API gateway for security controls
+   - Gradually refactor to secure practices
+   - Add monitoring and logging for security
 
 ---
 
-## Quick Tips & Best Practices
+## Summary
 
-### **Authentication & Authorization**
-✅ Use strong password policies and MFA
-✅ Implement proper session management
-✅ Apply principle of least privilege
-✅ Regular security audits and penetration testing
-✅ Keep authentication libraries updated
+### Key Takeaways
 
-### **Input Validation**
-✅ Validate all input data on server-side
-✅ Use allowlists instead of blocklists
-✅ Sanitize and escape output data
-✅ Implement rate limiting to prevent abuse
-✅ Use parameterized queries for database access
+1. **OWASP Top 10**: Understand the most critical API security risks
+2. **Defense in Depth**: Multiple security layers for comprehensive protection
+3. **Input Validation**: Prevent injection attacks through proper validation
+4. **Authentication**: Secure user identity verification with MFA
+5. **Authorization**: Control access with role-based permissions
+6. **Rate Limiting**: Prevent abuse and denial of service attacks
+7. **Encryption**: Protect data both in transit and at rest
+8. **Logging**: Monitor and detect security events
+9. **Security Headers**: Implement essential security headers
+10. **Testing**: Regularly test for vulnerabilities
 
-### **Data Protection**
-✅ Encrypt data in transit with HTTPS
-✅ Encrypt sensitive data at rest
-✅ Implement proper error handling
-✅ Avoid exposing internal system information
-✅ Use secure file upload practices
+### Security Checklist
 
-### **Monitoring & Logging**
-✅ Log security events centrally
-✅ Monitor for suspicious activities
-✅ Implement intrusion detection
-✅ Regular security scanning and testing
-✅ Have incident response procedures
+- [ ] Implement HTTPS everywhere
+- [ ] Use strong authentication (MFA when possible)
+- [ ] Validate all input data
+- [ ] Implement proper authorization checks
+- [ ] Add rate limiting to prevent abuse
+- [ ] Encrypt sensitive data at rest and in transit
+- [ ] Log security events and monitor for anomalies
+- - ] Implement security headers
+- [ ] Regular security testing and penetration testing
+- [ ] Keep dependencies updated for security patches
+- [ ] Use secure development practices
 
-### **Infrastructure Security**
-✅ Use web application firewalls
-✅ Implement DDoS protection
-✅ Regular security updates
-✅ Network segmentation
-✅ Backup and recovery procedures
+### Security Implementation Framework
 
----
+```mermaid
+graph TD
+    A[Assess Risks] --> B[Plan Controls]
+    B --> C[Implement Layers]
+    C --> D[Monitor & Alert]
+    D --> E[Review & Improve]
 
-## Chapter Summary
+    A --> A1[Threat Modeling]
+    A --> A2[Vulnerability Assessment]
 
-Chapter 7 covers comprehensive API security:
+    B --> B1[Security Architecture]
+    B --> B2[Control Priorities]
 
-### **Security Best Practices**
+    C --> C1[Network Security]
+    C --> C2[Authentication]
+    C --> C3[Authorization]
+    C --> C4[Input Validation]
+    C --> C5[Rate Limiting]
 
-- **Defense in Depth**: Multiple security layers
-- **HTTPS Implementation**: Proper SSL/TLS configuration
-- **Authentication Security**: Strong passwords, MFA, secure tokens
-- **Input Validation**: Prevent injection attacks
-- **Rate Limiting**: Multiple layers of protection
-- **Logging & Monitoring**: Security event tracking
+    D --> D1[Security Logging]
+    D --> D2[Anomaly Detection]
+    D --> D3[Incident Response]
 
-### **Common Vulnerabilities**
+    E --> E1[Security Reviews]
+    E --> E2[Penetration Testing]
+    E --> E3[Compliance Audits]
+```
 
-- **OWASP API Top 10**: Critical security risks
-- **BOLA**: Object level authorization bypasses
-- **Mass Assignment**: Uncontrolled data binding
-- **Security Misconfiguration**: Improper setup
-- **Injection**: SQL, NoSQL, and command injection
-
-### **Implementation Guidelines**
-
-- **Secure by Default**: Start with secure configurations
-- **Least Privilege**: Minimum necessary access
-- **Defense in Depth**: Multiple security layers
-- **Regular Testing**: Automated security scanning
-- **Incident Response**: Prepare for security breaches
-
-API security is an ongoing process requiring continuous monitoring, testing, and improvement. Stay updated with the latest security threats and best practices to protect your APIs and users.
+**Next Up**: Chapter 08 explores API Performance, covering how to measure, monitor, and optimize your API for speed and efficiency.
