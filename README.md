@@ -1,18 +1,18 @@
 # Placement Learning Roadmap 🚀
 
-A comprehensive learning repository for placement preparation covering programming languages, data structures, algorithms, and interview preparation.
+A comprehensive learning repository for placement preparation covering programming languages, data structures, algorithms, computer fundamentals, and interview preparation.
 
 ## 📚 Learning Tracks
 
 ### 1. C++ Programming Track 🎯
 - **Location**: [CPP/](CPP/)
 - **Focus**: Modern C++ fundamentals to advanced concepts
-- **Chapters**: 15 comprehensive chapters covering:
+- **Chapters**: 9 comprehensive chapters covering:
   - Language basics and environment setup
   - Object-oriented programming
   - Standard Template Library (STL)
-  - Modern C++ features (C++11-C++23)
-  - Design patterns and idioms
+  - Pointers, references, and memory management
+  - Structures, classes, and code organization
 - **Target**: C++ interview preparation and system programming
 
 ### 2. Data Structures & Algorithms Track 📊
@@ -26,39 +26,59 @@ A comprehensive learning repository for placement preparation covering programmi
   - Dynamic Programming, Tries, String Algorithms, Mathematics
 - **Target**: Algorithmic problem solving and coding interviews
 
-### 3. Database Management Systems Track 🗄️
-- **Location**: [DBMS/](DBMS/)
-- **Focus**: Comprehensive database management and SQL skills
-- **Chapters**: 20 chapters including:
-  - Database fundamentals and relational model
-  - SQL basics to advanced queries
-  - Normalization and database design
-  - Transaction management and concurrency control
-  - Indexing, query processing, performance tuning
-  - NoSQL databases and distributed systems
-- **Target**: Database administration, backend development, and data engineering
+### 3. Computer Science Fundamentals 💻
+- **Location**: [CS fundamentals/](CS%20fundamentals/)
+- **Focus**: Core CS concepts for software engineering interviews
+- **Modules**:
+  - **API Design**: 12 chapters covering REST API development, authentication, security, performance, and integration patterns
+  - **Database Management Systems**: 11+ chapters covering SQL, normalization, transactions, indexing, NoSQL, and distributed systems
+  - **Operating Systems**: 9 chapters covering process management, memory management, concurrency, and scheduling algorithms
+  - **Computer Networks**: Comprehensive networking concepts and interview preparation materials
+- **Target**: System design, backend development, and software engineering interviews
+
+### 4. Mathematics for Machine Learning 🧮
+- **Location**: [Maths for ML/](Maths%20for%20ML/)
+- **Focus**: Mathematical foundations for data science and ML interviews
+- **Modules**:
+  - **Linear Algebra for ML**: Vectors, matrices, transformations, eigenvalues, and SVD
+  - **Calculus for ML**: Differentiation, optimization theory, gradient descent, and loss functions
+  - **Statistics and Probability**:
+    - Probability theory, distributions, and inference
+    - Statistical methods, hypothesis testing, and practical applications
+    - Comprehensive resources including books, courses, and interview preparation materials
+- **Target**: Data science, ML engineering, and quantitative interview preparation
 
 ---
 
 ## 🎯 Learning Path
 
 ### Phase 1: Foundation (3-4 months)
-1. **C++ Fundamentals** - Complete Chapters 1-8
+1. **C++ Fundamentals** - Complete Chapters 1-6
 2. **Basic DSA** - Complete Chapters 1-6
-3. **DBMS Basics** - Complete Chapters 1-5
-4. **Practice** - 50+ easy problems
+3. **CS Fundamentals** - API Design basics + OS fundamentals
+4. **Mathematics** - Linear algebra basics + Probability fundamentals
+5. **Practice** - 50+ easy problems
 
 ### Phase 2: Core Concepts (4-5 months)
-1. **Advanced C++** - Complete Chapters 9-15
+1. **Advanced C++** - Complete Chapters 7-9
 2. **Core DSA** - Complete Chapters 7-15
-3. **SQL Mastery** - Complete Chapters 6-10
-4. **Practice** - 100+ medium problems
+3. **Database Systems** - SQL mastery + normalization + indexing
+4. **Advanced Math** - Calculus + Advanced Statistics
+5. **Practice** - 100+ medium problems
 
-### Phase 3: Interview Preparation (2-3 months)
-1. **Advanced DSA** - Complete Chapters 16-18
-2. **Advanced DBMS** - Complete Chapters 11-20
-3. **Mock Interviews** - Regular practice sessions
-4. **Company-Specific Prep** - Target company patterns
+### Phase 3: Specialization (3-4 months)
+1. **API Design** - Advanced patterns + Security + Performance
+2. **Advanced DSA** - Complete Chapters 16-18
+3. **Network Concepts** - Comprehensive networking knowledge
+4. **Math Applications** - ML-specific mathematical concepts
+5. **Practice** - 100+ hard problems
+
+### Phase 4: Interview Preparation (2-3 months)
+1. **Mock Interviews** - Regular practice sessions
+2. **Company-Specific Prep** - Target company patterns
+3. **System Design** - End-to-end system design practice
+4. **ML/AI Concepts** - Data science and ML interview prep
+5. **Final Review** - Comprehensive revision of all topics
 
 ---
 
@@ -95,33 +115,49 @@ A comprehensive learning repository for placement preparation covering programmi
 ### Books
 - **C++**: The C++ Programming Language by Bjarne Stroustrup
 - **DSA**: Introduction to Algorithms by CLRS
-- **DBMS**: Database System Concepts by Korth & Silberschatz
-- **SQL**: Learning SQL by Alan Beaulieu
+- **API Design**: RESTful Web APIs by Leonard Richardson
+- **Database**: Database System Concepts by Korth & Silberschatz
+- **OS**: Operating System Concepts by Silberschatz
+- **Networks**: Computer Networking by Kurose & Ross
+- **Mathematics**:
+  - Linear Algebra Done Right by Sheldon Axler
+  - Probability & Statistics for Engineers by Devore
+  - An Introduction to Statistical Learning (ISLR)
 - **Interview**: Cracking the Coding Interview by Gayle McDowell
 
 ### YouTube Channels
 - **C++**: The Cherno, CppNuts
 - **DSA**: Abdul Bari, Gaurav Sen
-- **DBMS**: FreeCodeCamp, Programming with Mosh
-- **Interview**: TechLead, Errichto
+- **API Design**: Academind, Traversy Media
+- **Database**: FreeCodeCamp, Programming with Mosh
+- **Operating Systems**: Operating Systems by Georgia Tech
+- **Networks**: Computer Networking by Stanford
+- **Mathematics**: 3Blue1Brown, Khan Academy, StatQuest
+- **Interview**: TechLead, Errichto, Gaurav Sen
 
 ---
 
 ## 🏆 Progress Tracking
 
 ### Checkpoints
-- [ ] **Month 1**: C++ basics + Basic DSA
-- [ ] **Month 2**: OOP + Data Structures
-- [ ] **Month 3**: STL + Algorithms
-- [ ] **Month 4**: Advanced C++ + Graph Algorithms
-- [ ] **Month 5**: Design Patterns + Advanced Topics
-- [ ] **Month 6**: Interview Prep + Mock Tests
+- [ ] **Month 1**: C++ basics + Basic DSA + CS Fundamentals
+- [ ] **Month 2**: OOP + Data Structures + API Design basics
+- [ ] **Month 3**: STL + Algorithms + Database fundamentals
+- [ ] **Month 4**: Advanced C++ + Math fundamentals
+- [ ] **Month 5**: Graph Algorithms + OS concepts + Advanced Math
+- [ ] **Month 6**: Network concepts + ML math + System design
+- [ ] **Month 7**: Full stack integration + Advanced topics
+- [ ] **Month 8**: Interview Prep + Mock Tests
 
 ### Milestones
 - [ ] **50 Problems**: Basic problem solving
 - [ ] **200 Problems**: Intermediate proficiency
 - [ ] **500 Problems**: Advanced problem solving
+- [ ] **API Project**: Complete REST API implementation
+- [ ] **Database Project**: Database design and implementation
+- [ ] **Math Portfolio**: Complete mathematical problem sets
 - [ ] **Mock Interviews**: Interview readiness
+- [ ] **System Design**: End-to-end system design capability
 
 ---
 
