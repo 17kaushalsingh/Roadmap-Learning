@@ -22,3 +22,13 @@
 
 ## Best Blogs
 - **Machine Learning Mastery - Statistical Methods**: https://machinelearningmastery.com/category/statistical-methods/
+- **Tests as Linear**: https://lindeloev.github.io/tests-as-linear/
+- **How to Ace Data Science Interviews - Statistics**: https://towardsdatascience.com/how-to-ace-data-science-interviews-statistics-f3d363ad47b
+
+## Cheatsheets for Revision
+- **Cracking the Data Science Interview - Hypothesis Testing**: https://github.com/khanhnamle1994/cracking-the-data-science-interview/tree/master/Cheatsheets#defining-good-hypotheses-in-a-hypothesis-test
+- **Statistics Cheat Sheet**: https://static1.squarespace.com/static/5a5028498a02c7e658ff8f67/t/5a84aaf8e2c4835ce8d571dd/1518643960840/Statisticssheet.pdf
+- **StrataScratch Statistics Cheat Sheet**: https://www.stratascratch.com/blog/a-comprehensive-statistics-cheat-sheet-for-data-science-interviews/
+- **Texas A&M Statistics Cheat Sheet**: https://web.stat.tamu.edu/~suhasini/teaching301/cheatsheet.pdf
+- **Stanford Statistics Cheat Sheet**: https://stanford.edu/~shervine/teaching/cme-106/cheatsheet-statistics
+- **MIT Statistics Handout**: https://web.mit.edu/~csvoss/Public/usabo/stats_handout.pdf
